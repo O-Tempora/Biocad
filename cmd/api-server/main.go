@@ -15,15 +15,17 @@ import (
 const configPath = "config/default.yaml"
 
 var (
-	dir    string
-	host   string
-	port   int
-	dbhost string
-	dbport int
+	dir       string
+	outputDir string
+	host      string
+	port      int
+	dbhost    string
+	dbport    int
 )
 
 func init() {
 	flag.StringVar(&dir, "dir", "files", "File directory")
+	flag.StringVar(&outputDir, "odir", "processed", "Output file directory")
 	flag.StringVar(&host, "host", "localhost", "Application host")
 	flag.IntVar(&port, "port", 7999, "Application port")
 	flag.StringVar(&dbhost, "dbhost", "localhost", "Database host")
@@ -42,7 +44,8 @@ func main() {
 	}
 	file.Close()
 
-	cf.Dir = dir
+	cf.SourceDir = dir
+	cf.OutputDir = outputDir
 	cf.DbHost = dbhost
 	cf.DbPort = dbport
 	cf.Host = host
@@ -52,6 +55,9 @@ func main() {
 	if err != nil {
 		log.Fatal(err.Error())
 	}
+
+	go s.Service().RunDirectiryScanner(cf.SourceDir, cf.OutputDir)
+
 	if err = http.ListenAndServe(fmt.Sprintf("%s:%d", cf.Host, cf.Port), s); err != nil {
 		log.Fatal(err.Error())
 	}

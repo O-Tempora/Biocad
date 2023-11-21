@@ -30,7 +30,8 @@ func InitServer(cf *internal.Config) (*server, error) {
 		return nil, err
 	}
 	s.service = &service.Service{
-		Db: db,
+		Db:     db,
+		Logger: s.logger,
 	}
 	return s, nil
 }
@@ -51,4 +52,8 @@ func InitDatabase(cf *internal.Config) (*mongo.Client, error) {
 		return nil, err
 	}
 	return db, nil
+}
+
+func (s *server) Service() *service.Service {
+	return s.service
 }
