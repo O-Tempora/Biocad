@@ -1,0 +1,7 @@
+host: "localhost"
+port: 7999
+dir: "files"
+dbhost: "localhost"
+dbport: 7998
+# dbuser: "default"
+# dbpassword: "default"
