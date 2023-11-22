@@ -1,9 +1,7 @@
 package service
 
 import (
-	"encoding/csv"
 	"fmt"
-	"io"
 	"os"
 	"path"
 	"time"
@@ -47,30 +45,17 @@ func (s *Service) processDir(fileDir, outputDir string) error {
 		if path.Ext(filePath) != ".tsv" {
 			continue
 		}
-
 		file, err := os.OpenFile(filePath, os.O_RDONLY, 0766)
 		if err != nil {
 			s.Logger.Error("On opening file:", err.Error())
 			continue
 		}
-		readTsv(file)
-	}
-	return nil
-}
-
-func readTsv(file *os.File) error {
-	reader := csv.NewReader(file)
-	reader.Comma = '\t'
-	for {
-		strs, err := reader.Read()
-		if err == io.EOF {
-			break
+		tsv := readTsv(file)
+		for _, v := range tsv.Records {
+			fmt.Println(v)
 		}
-		if err != nil {
-			fmt.Println(err)
-		} else {
-			fmt.Println(strs)
-		}
+		fmt.Println("\n")
+		fmt.Println(tsv.Errors)
 	}
 	return nil
 }
