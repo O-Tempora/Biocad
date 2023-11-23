@@ -70,20 +70,24 @@ func readTsv(file *os.File) *TargetFile {
 
 func parseTsv(line []string) *Record {
 	rec := &Record{}
+	if len(line) != len(headers) {
+		rec.Errors = append(rec.Errors, fmt.Errorf("Invalid number of arguments: %d (must be %d)", len(line), len(headers)))
+	}
 	for i, v := range line {
 		v = strings.TrimSpace(v)
-		if v == "" {
-			rec.Errors = append(rec.Errors, fmt.Errorf("field \"%s\" is empty", headers[i]))
-		}
+		// if v == "" {
+		// 	rec.Errors = append(rec.Errors, fmt.Errorf("field \"%s\" is empty", headers[i]))
+		// }
 		switch i {
 		case 0:
-			_, err := strconv.Atoi(v)
-			if err != nil {
-				rec.Errors = append(rec.Errors, fmt.Errorf("field \"%s\" must be a number", headers[i]))
-				rec.N = ""
-			} else {
-				rec.N = v
+			if v != "" {
+				_, err := strconv.Atoi(v)
+				if err != nil {
+					rec.Errors = append(rec.Errors, fmt.Errorf("field \"%s\" must be a number", headers[i]))
+					v = ""
+				}
 			}
+			rec.N = v
 		case 1:
 			rec.Mqqt = v
 		case 2:
@@ -99,13 +103,14 @@ func parseTsv(line []string) *Record {
 		case 7:
 			rec.Class = v
 		case 8:
-			_, err := strconv.Atoi(v)
-			if err != nil {
-				rec.Errors = append(rec.Errors, fmt.Errorf("field \"%s\" must be a number", headers[i]))
-				rec.Level = ""
-			} else {
-				rec.Level = v
+			if v != "" {
+				_, err := strconv.Atoi(v)
+				if err != nil {
+					rec.Errors = append(rec.Errors, fmt.Errorf("field \"%s\" must be a number", headers[i]))
+					v = ""
+				}
 			}
+			rec.Level = v
 		case 9:
 			rec.Area = v
 		case 10:
@@ -115,21 +120,23 @@ func parseTsv(line []string) *Record {
 		case 12:
 			rec.Type = v
 		case 13:
-			_, err := strconv.Atoi(v)
-			if err != nil {
-				rec.Errors = append(rec.Errors, fmt.Errorf("field \"%s\" must be a number", headers[i]))
-				rec.Bit = ""
-			} else {
-				rec.Bit = v
+			if v != "" {
+				_, err := strconv.Atoi(v)
+				if err != nil {
+					rec.Errors = append(rec.Errors, fmt.Errorf("field \"%s\" must be a number", headers[i]))
+					v = ""
+				}
 			}
+			rec.Bit = v
 		case 14:
-			_, err := strconv.Atoi(v)
-			if err != nil {
-				rec.Errors = append(rec.Errors, fmt.Errorf("field \"%s\" must be a number", headers[i]))
-				rec.Invert_bit = ""
-			} else {
-				rec.Invert_bit = v
+			if v != "" {
+				_, err := strconv.Atoi(v)
+				if err != nil {
+					rec.Errors = append(rec.Errors, fmt.Errorf("field \"%s\" must be a number", headers[i]))
+					v = ""
+				}
 			}
+			rec.Invert_bit = v
 		}
 	}
 	return rec

@@ -54,8 +54,6 @@ func (s *Service) processDir(fileDir, outputDir string) error {
 		for _, v := range tsv.Records {
 			fmt.Println(v)
 		}
-		fmt.Println("\n")
-		fmt.Println(tsv.Errors)
 	}
 	return nil
 }
