@@ -30,7 +30,7 @@ func InitServer(cf *internal.Config) (*server, error) {
 		return nil, err
 	}
 	s.service = &service.Service{
-		Db:     db,
+		Db:     db.Database("Biocad"),
 		Logger: s.logger,
 	}
 	return s, nil
