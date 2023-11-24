@@ -13,27 +13,26 @@ var headers = [...]string{"n", "mqqt", "invid", "unit_guid", "msg_id", "text", "
 
 type TargetFile struct {
 	Name    string   `bson:"_id"`
-	Records []Record `bson:"records,omitempty"`
-	Errors  []string `bson:"errors,omitempty"`
+	Records []Record `bson:"records"`
+	Errors  []string `bson:"errors"`
 }
 
 type Record struct {
-	N          string   `bson:"n,omitempty"`
-	Mqqt       string   `bson:"mqqt,omitempty"`
-	Invid      string   `bson:"invid,omitempty"`
-	Unit_guid  string   `bson:"guid,omitempty"`
-	Msg_id     string   `bson:"msg_id,omitempty"`
-	Text       string   `bson:"text,omitempty"`
-	Context    string   `bson:"context,omitempty"`
-	Class      string   `bson:"class,omitempty"`
-	Level      string   `bson:"level,omitempty"`
-	Area       string   `bson:"area,omitempty"`
-	Addr       string   `bson:"addr,omitempty"`
-	Block      string   `bson:"block,omitempty"`
-	Type       string   `bson:"type,omitempty"`
-	Bit        string   `bson:"bit,omitempty"`
-	Invert_bit string   `bson:"invert_bit,omitempty"`
-	Errors     []string `bson:"errors,omitempty"`
+	N          string `bson:"n"`
+	Mqqt       string `bson:"mqqt"`
+	Invid      string `bson:"invid"`
+	Unit_guid  string `bson:"guid"`
+	Msg_id     string `bson:"msg_id"`
+	Text       string `bson:"text"`
+	Context    string `bson:"context"`
+	Class      string `bson:"class"`
+	Level      string `bson:"level"`
+	Area       string `bson:"area"`
+	Addr       string `bson:"addr"`
+	Block      string `bson:"block"`
+	Type       string `bson:"type"`
+	Bit        string `bson:"bit"`
+	Invert_bit string `bson:"invert_bit"`
 }
 
 func readTsv(file *os.File) TargetFile {
@@ -57,8 +56,9 @@ func readTsv(file *os.File) TargetFile {
 			continue
 		}
 		if index > 1 {
-			rec := parseTsv(line)
+			rec, errs := parseTsv(line, index)
 			tf.Records = append(tf.Records, *rec)
+			tf.Errors = append(tf.Errors, errs...)
 		}
 		index++
 	}
@@ -68,22 +68,20 @@ func readTsv(file *os.File) TargetFile {
 	return *tf
 }
 
-func parseTsv(line []string) *Record {
+func parseTsv(line []string, index int) (*Record, []string) {
 	rec := &Record{}
+	errors := make([]string, 0, len(line))
 	if len(line) != len(headers) {
-		rec.Errors = append(rec.Errors, fmt.Sprintf("Invalid number of arguments: %d (must be %d)", len(line), len(headers)))
+		errors = append(errors, fmt.Sprintf("line %d, nvalid number of arguments: %d (must be %d)", index, len(line), len(headers)))
 	}
 	for i, v := range line {
 		v = strings.TrimSpace(v)
-		// if v == "" {
-		// 	rec.Errors = append(rec.Errors, fmt.Errorf("field \"%s\" is empty", headers[i]))
-		// }
 		switch i {
 		case 0:
 			if v != "" {
 				_, err := strconv.Atoi(v)
 				if err != nil {
-					rec.Errors = append(rec.Errors, fmt.Sprintf("field \"%s\" must be a number", headers[i]))
+					errors = append(errors, fmt.Sprintf("line %d, field \"%s\" must be a number", index, headers[i]))
 					v = ""
 				}
 			}
@@ -106,7 +104,7 @@ func parseTsv(line []string) *Record {
 			if v != "" {
 				_, err := strconv.Atoi(v)
 				if err != nil {
-					rec.Errors = append(rec.Errors, fmt.Sprintf("field \"%s\" must be a number", headers[i]))
+					errors = append(errors, fmt.Sprintf("line %d, field \"%s\" must be a number", index, headers[i]))
 					v = ""
 				}
 			}
@@ -123,7 +121,7 @@ func parseTsv(line []string) *Record {
 			if v != "" {
 				_, err := strconv.Atoi(v)
 				if err != nil {
-					rec.Errors = append(rec.Errors, fmt.Sprintf("field \"%s\" must be a number", headers[i]))
+					errors = append(errors, fmt.Sprintf("line %d, field \"%s\" must be a number", index, headers[i]))
 					v = ""
 				}
 			}
@@ -132,12 +130,12 @@ func parseTsv(line []string) *Record {
 			if v != "" {
 				_, err := strconv.Atoi(v)
 				if err != nil {
-					rec.Errors = append(rec.Errors, fmt.Sprintf("field \"%s\" must be a number", headers[i]))
+					errors = append(errors, fmt.Sprintf("line %d, field \"%s\" must be a number", index, headers[i]))
 					v = ""
 				}
 			}
 			rec.Invert_bit = v
 		}
 	}
-	return rec
+	return rec, errors
 }

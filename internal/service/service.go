@@ -76,7 +76,7 @@ func (s *Service) RunDirectiryScanner(fileDir, outputDir string) error {
 	if err := os.MkdirAll(outputDir, 0744); err != nil {
 		return err
 	}
-	ticker := time.Tick(10 * time.Second)
+	ticker := time.Tick(20 * time.Second)
 	for {
 		select {
 		case <-ticker:
