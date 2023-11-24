@@ -2,6 +2,7 @@ package service
 
 import (
 	"context"
+	"fmt"
 	"os"
 	"path"
 	"slices"
@@ -65,6 +66,37 @@ func (s *Service) GetProcessedFileNames() ([]string, error) {
 		}
 	}
 	s.Logger.InfoContext(ctx, "filenames retreived", slog.Int("already processed", len(objs)))
+	return res, nil
+}
+
+func (s *Service) GetDocs(page, limit int) ([]TargetFile, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	skip := int64(limit * (page - 1))
+	lim := int64(limit)
+
+	res := make([]TargetFile, 0, limit)
+	cur, err := s.Db.Collection(s.CollectionName).Find(
+		ctx,
+		bson.D{},
+		&options.FindOptions{
+			Limit: &lim,
+			Skip:  &skip,
+		},
+	)
+	if err != nil {
+		return nil, err
+	}
+
+	for cur.Next(ctx) {
+		var tf TargetFile
+		if err := cur.Decode(&tf); err != nil {
+			fmt.Println(err)
+			return nil, err
+		}
+		res = append(res, tf)
+	}
 	return res, nil
 }
 
