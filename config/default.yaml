@@ -1,8 +1,6 @@
-host: "localhost"
+host: "127.0.0.1"
 port: 7999
 sourceDir: "files"
 outputDir: "processed"
 dbhost: "localhost"
 dbport: 7998
-# dbuser: "default"
-# dbpassword: "default"

@@ -24,11 +24,11 @@ var (
 )
 
 func init() {
-	flag.StringVar(&dir, "dir", "files", "File directory")
-	flag.StringVar(&outputDir, "odir", "processed", "Output file directory")
+	flag.StringVar(&dir, "sourceDir", "files", "File directory")
+	flag.StringVar(&outputDir, "outputDir", "processed", "Output file directory")
 	flag.StringVar(&host, "host", "localhost", "Application host")
 	flag.IntVar(&port, "port", 7999, "Application port")
-	flag.StringVar(&dbhost, "dbhost", "localhost", "Database host")
+	flag.StringVar(&dbhost, "dbhost", "127.0.0.1", "Database host")
 	flag.IntVar(&dbport, "dbport", 7998, "Database port")
 }
 func main() {

@@ -4,11 +4,11 @@ import (
 	"bytes"
 	"context"
 	"fmt"
-	"html/template"
 	"os"
 	"path"
 	"slices"
 	"text/tabwriter"
+	"text/template"
 	"time"
 
 	"log/slog"
