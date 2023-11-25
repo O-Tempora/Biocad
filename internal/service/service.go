@@ -1,15 +1,19 @@
 package service
 
 import (
+	"bytes"
 	"context"
 	"fmt"
+	"html/template"
 	"os"
 	"path"
 	"slices"
+	"text/tabwriter"
 	"time"
 
 	"log/slog"
 
+	"github.com/signintech/gopdf"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
@@ -21,7 +25,7 @@ type Service struct {
 	CollectionName string
 }
 
-func (s *Service) WriteFilesToDB(files []TargetFile) error {
+func (s *Service) WriteFilesToDB(files []*TargetFile) error {
 	if len(files) == 0 {
 		s.Logger.InfoContext(context.Background(), "no new files")
 		return nil
@@ -69,14 +73,14 @@ func (s *Service) GetProcessedFileNames() ([]string, error) {
 	return res, nil
 }
 
-func (s *Service) GetDocs(page, limit int) ([]TargetFile, error) {
+func (s *Service) GetDocs(page, limit int) ([]*TargetFile, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
 	skip := int64(limit * (page - 1))
 	lim := int64(limit)
 
-	res := make([]TargetFile, 0, limit)
+	res := make([]*TargetFile, 0, limit)
 	cur, err := s.Db.Collection(s.CollectionName).Find(
 		ctx,
 		bson.D{},
@@ -90,7 +94,7 @@ func (s *Service) GetDocs(page, limit int) ([]TargetFile, error) {
 	}
 
 	for cur.Next(ctx) {
-		var tf TargetFile
+		var tf *TargetFile
 		if err := cur.Decode(&tf); err != nil {
 			fmt.Println(err)
 			return nil, err
@@ -129,9 +133,9 @@ func (s *Service) RunDirectiryScanner(fileDir, outputDir string) error {
 	}
 }
 
-func (s *Service) processDir(fileDir, outputDir string, alreadyProcessed []string) ([]TargetFile, error) {
+func (s *Service) processDir(fileDir, outputDir string, alreadyProcessed []string) ([]*TargetFile, error) {
 	ctx := context.Background()
-	var tsvs []TargetFile
+	var tsvs []*TargetFile
 	entries, err := os.ReadDir(fileDir)
 	if err != nil {
 		return nil, err
@@ -142,11 +146,9 @@ func (s *Service) processDir(fileDir, outputDir string, alreadyProcessed []strin
 		}
 		filePath := path.Join(fileDir, v.Name())
 		if path.Ext(filePath) != ".tsv" {
-			//s.Logger.InfoContext(ctx, "skipped non-tsv file", slog.String("name", v.Name()))
 			continue
 		}
 		if slices.Contains(alreadyProcessed, v.Name()) {
-			//s.Logger.InfoContext(ctx, "encountered already processed file", slog.String("name", v.Name()))
 			continue
 		}
 		file, err := os.OpenFile(filePath, os.O_RDONLY, 0766)
@@ -154,10 +156,86 @@ func (s *Service) processDir(fileDir, outputDir string, alreadyProcessed []strin
 			s.Logger.ErrorContext(ctx, err.Error())
 			continue
 		}
-		tf := readTsv(file)
+		tf, toGenerate := readTsv(file)
+
+		if err := s.createPDFs(toGenerate, outputDir); err != nil {
+			s.Logger.ErrorContext(ctx, "failed to create pdf", slog.Any("err", err.Error()))
+		}
+		if err := s.createTxts(toGenerate, outputDir); err != nil {
+			s.Logger.ErrorContext(ctx, "failed to create txt", slog.Any("err", err.Error()))
+		}
+
 		tf.Name = v.Name()
 		tsvs = append(tsvs, tf)
 		s.Logger.InfoContext(ctx, "file processed", slog.Any("name", tf.Name))
 	}
 	return tsvs, nil
+}
+
+func (s *Service) createPDFs(files map[string]*TargetFile, outDir string) error {
+	if len(files) == 0 {
+		s.Logger.InfoContext(context.Background(), "No new pdf files created")
+		return nil
+	}
+	templ := "{{range .Records}}{{.N}}\t{{.Mqqt}}\t{{.Invid}}\t{{.Msg_id}}\t{{.Text}}\t{{.Context}}\t{{.Class}}\t{{.Level}}\t{{.Area}}\t{{.Addr}}\t{{.Block}}\t{{.Type}}\t{{.Bit}}\t{{.Invert_bit}}\n{{end}}"
+	for _, v := range files {
+		var bb bytes.Buffer
+		t := template.Must(template.New("").Parse(templ))
+		w := tabwriter.NewWriter(&bb, 12, 4, 2, ' ', 0)
+		err := t.Execute(w, v)
+		if err != nil {
+			return err
+		}
+		w.Flush()
+
+		pdf := gopdf.GoPdf{}
+		pdf.Start(gopdf.Config{PageSize: *gopdf.PageSizeA2})
+		pdf.AddPage()
+		pdf.AddTTFFont("Arial Cyr", "fonts/Arial Cyr.ttf")
+		pdf.SetFont("Arial Cyr", "", 12)
+		pdf.SetXY(10, 10)
+		pdf.Text("Records")
+		for ind := range v.Records {
+			pdf.SetXY(10, float64(10+10*(ind+1)))
+			str, _ := bb.ReadString('\n')
+			pdf.Text(str)
+		}
+
+		pdf.AddPage()
+		pdf.SetXY(10, 10)
+		pdf.Text("Errors")
+		for ind, v := range v.Errors {
+			pdf.SetXY(10, float64(10+10*(ind+1)))
+			pdf.Text(v)
+		}
+		if err = pdf.WritePdf(fmt.Sprintf("%s/%s.pdf", outDir, v.Name)); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func (s *Service) createTxts(files map[string]*TargetFile, outDir string) error {
+	if len(files) == 0 {
+		s.Logger.InfoContext(context.Background(), "No new pdf files created")
+		return nil
+	}
+	templ := "N\tMqqt\tInvid\tMsg_id\tText\tContext\tClass\tLevel\tArea\tAddr\tBlock\tType\tBit\tInvert_bit\n" +
+		"{{range .Records}}{{.N}}\t{{.Mqqt}}\t{{.Invid}}\t{{.Msg_id}}\t{{.Text}}\t{{.Context}}\t{{.Class}}\t{{.Level}}\t{{.Area}}\t{{.Addr}}\t{{.Block}}\t{{.Type}}\t{{.Bit}}\t{{.Invert_bit}}\n{{end}}\n\n" +
+		"Errors" +
+		"{{range .Errors}}{{.}}\n{{end}}"
+	for _, v := range files {
+		file, err := os.Create(fmt.Sprintf("%s/%s.txt", outDir, v.Name))
+		if err != nil {
+			return err
+		}
+		t := template.Must(template.New("").Parse(templ))
+		w := tabwriter.NewWriter(file, 12, 4, 2, ' ', 0)
+		err = t.Execute(w, v)
+		if err != nil {
+			return err
+		}
+		w.Flush()
+	}
+	return nil
 }

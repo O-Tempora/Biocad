@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>
+        Device {{.Name}}
+    </title>
+</head>
+<body>
+    <h2>Records</h2>
+    <table>
+        <th>N</th>
+        <th>Mqqt</th>
+        <th>Invid</th>
+        <th>Msg_id</th>
+        <th>Text</th>
+        <th>Context</th>
+        <th>Class</th>
+        <th>Level</th>
+        <th>Area</th>
+        <th>Addr</th>
+        <th>Block</th>
+        <th>Type</th>
+        <th>Bit</th>
+        <th>Invert_bit</th>
+        {{range .Records}}
+            <td>{{.N}}</td>
+            <td>{{.Mqqt}}</td>
+            <td>{{.Invid}}</td>
+            <td>{{.Msg_id}}</td>
+            <td>{{.Text}}</td>
+            <td>{{.Context}}</td>
+            <td>{{.Class}}</td>
+            <td>{{.level}}</td>
+            <td>{{.Area}}</td>
+            <td>{{.Addr}}</td>
+            <td>{{.Block}}</td>
+            <td>{{.Type}}</td>
+            <td>{{.Bit}}</td>
+            <td>{{.Invert_bit}}</td>
+        {{end}}
+    </table>
+    <h2></h2>
+    <h2>Errors</h2>
+    {{range .Errors}}
+        {{.}}
+    {{end}}
+</body>
+</html>
